@@ -36,7 +36,7 @@
     position:relative;
   }
 
-  /*  background  */
+  /* ---------- background ---------- */
   .bg{
     position:fixed;
     inset:0;
@@ -82,7 +82,7 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* shell  */
+  /* ---------- shell ---------- */
   .shell{ position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
 
   nav{
@@ -163,6 +163,11 @@
     text-decoration:none;
   }
   .logo .spark{ font-style:normal; font-size:15px; color:var(--core-blue); }
+  /* Shared spark icon — a real inline SVG instead of a Unicode character,
+     so it renders identically everywhere instead of falling back to each
+     OS's own color-emoji font (which is what caused the green squircle on
+     Mac and would've looked different again on Windows/Android). Sizes
+     with font-size and colors with `color`, same as the text it replaces. */
   .icon-spark{ display:inline-block; width:1em; height:1em; vertical-align:-0.12em; color:inherit; }
 
   main{ flex:1; display:flex; flex-direction:column; perspective:1600px; }
@@ -179,7 +184,7 @@
     color:var(--ink-dim); font-weight:600; margin-bottom:18px;
   }
 
-  /* HOME */
+  /* ---------- HOME ---------- */
   #home{
     min-height:calc(100vh - var(--nav-h));
     display:flex; flex-direction:column; justify-content:center; align-items:center;
@@ -224,7 +229,7 @@
   @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(5px); } }
   @media (prefers-reduced-motion:reduce){ .scroll-cue .dot{ animation:none; } }
 
-  /* ABOUT  */
+  /* ---------- ABOUT ---------- */
   .about-grid{
     max-width:1180px; display:grid; grid-template-columns:1.3fr .9fr; gap:70px; align-items:start;
   }
@@ -256,7 +261,7 @@
   .about-aside p:last-child{ margin-bottom:0; }
   .about-aside strong{ color:var(--ink); font-weight:600; }
 
-  /*  WORK: category cards  */
+  /* ---------- WORK: category cards ---------- */
   .cat-grid{
     display:grid; grid-template-columns:repeat(4,1fr); gap:18px;
     margin-bottom:56px;
@@ -303,7 +308,7 @@
   .empty-state p{ font-size:15px; color:var(--ink); font-weight:600; }
   .empty-sub{ font-size:13px; color:var(--ink-faint); }
 
-  /* CONTACT  */
+  /* ---------- CONTACT ---------- */
   .contact-grid{
     max-width:1180px; display:grid; grid-template-columns:1.3fr .9fr; gap:70px; align-items:start;
   }
@@ -338,7 +343,7 @@
   .form-status.ok{ color:var(--ink); }
   .form-status.err{ color:#ff9d9d; }
 
-  /* WORK  */
+  /* ---------- WORK ---------- */
   .work-head{ max-width:820px; margin-bottom:52px; }
   h1.title2{
     font-family:var(--sans); font-weight:600;
@@ -367,7 +372,7 @@
   .work-cta{ margin-top:48px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
   .work-cta p{ font-size:13px; color:var(--ink-dim); }
 
-  /* shared buttons  */
+  /* ---------- shared buttons ---------- */
   .btn{
     display:inline-flex; align-items:center; gap:10px;
     padding:13px 24px; border-radius:999px; border:1px solid var(--line);
@@ -376,14 +381,14 @@
   }
   .btn:hover{ border-color:var(--lilac); background:rgba(185,193,255,.08); }
 
-  /*  floating contact badge removed  */
+  /* ---------- floating contact badge removed ---------- */
 
   footer.pagefoot{
     padding:24px 56px 34px; display:flex; justify-content:space-between; color:var(--ink-faint);
     font-size:11.5px; letter-spacing:.06em; position:relative; z-index:1;
   }
 
-  /* scroll reveal (3D pull-up on scroll, site-wide)  */
+  /* ---------- scroll reveal (3D pull-up on scroll, site-wide) ---------- */
   .reveal{
     opacity:0;
     transform:translateY(64px) rotateX(22deg) scale(.96);
@@ -465,14 +470,14 @@
 
   <main>
 
-    <!-- HOME  -->
+    <!-- ============ HOME ============ -->
     <section id="home" class="view">
       <div class="home-inner">
         <div class="reveal">
+          <div class="eyebrow">We will gladly help you with</div>
           <h1 class="hero">
-            Design that <em>ships</em> <span class="spark-mark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span><br>
-            <em>redesign</em> and UX improvement<br>
-            one-stop shop <em>design support</em>
+            Your brand is too good<br>
+            <em>for average content.</em>
           </h1>
         </div>
 
@@ -491,7 +496,7 @@
       </div>
     </section>
 
-    <!-- ABOUT  -->
+    <!-- ============ ABOUT ============ -->
     <section id="about" class="view">
       <div class="about-grid">
         <div class="reveal">
@@ -530,7 +535,7 @@
       </div>
     </section>
 
-    <!-- WORK  -->
+    <!-- ============ WORK ============ -->
     <section id="work" class="view">
       <div class="work-head reveal">
         <div class="eyebrow">What we do</div>
@@ -666,7 +671,7 @@
       </div>
     </section>
 
-    <!-- CONTACT  -->
+    <!-- ============ CONTACT ============ -->
     <section id="contact" class="view">
       <div class="contact-grid">
         <div class="reveal">
@@ -729,7 +734,7 @@
 
 
 <script>
-  /*  sticky nav shadow on scroll */
+  /* ---- sticky nav shadow on scroll ---- */
   var siteNav = document.getElementById('siteNav');
   function onScrollNav(){
     if (window.scrollY > 12) siteNav.classList.add('scrolled');
@@ -738,7 +743,7 @@
   window.addEventListener('scroll', onScrollNav, { passive:true });
   onScrollNav();
 
-  /* scroll-triggered 3D reveal, site-wide  */
+  /* ---- scroll-triggered 3D reveal, site-wide ---- */
   var revealObserver = ('IntersectionObserver' in window)
     ? new IntersectionObserver(function(entries){
         entries.forEach(function(entry){
@@ -756,8 +761,8 @@
     else el.classList.add('reveal-in');
   });
 
-  /*  in-page links: scroll manually instead of relying on native '#' navigation
-       (the sandboxed preview panel can mishandle native anchor-fragment jumps) */
+  /* ---- in-page links: scroll manually instead of relying on native '#' navigation
+       (the sandboxed preview panel can mishandle native anchor-fragment jumps) ---- */
   document.querySelectorAll('a[href^="#"]').forEach(function(link){
     link.addEventListener('click', function(e){
       var id = link.getAttribute('href').slice(1);
@@ -769,7 +774,7 @@
     });
   });
 
-  /* category selection: shared by nav links + work cards  */
+  /* ---- category selection: shared by nav links + work cards ---- */
   var catCards = document.querySelectorAll('.cat-card');
   var workPanels = document.querySelectorAll('.work-panel-inner');
   var catNavLinks = document.querySelectorAll('.side-menu-link[data-cat]');
@@ -807,7 +812,7 @@
     link.addEventListener('click', function(){ selectCategory(link.dataset.cat); });
   });
 
-  /* slide-out menu  */
+  /* ---- slide-out menu ---- */
   var menuToggle = document.getElementById('menuToggle');
   var menuClose = document.getElementById('menuClose');
   var sideMenu = document.getElementById('sideMenu');
@@ -839,7 +844,7 @@
     });
   });
 
-  /* contact form -> Python backend  */
+  /* ---- contact form -> Python backend ---- */
   var contactForm = document.getElementById('contactForm');
   if (contactForm){
     contactForm.addEventListener('submit', function(e){
