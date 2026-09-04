@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bleu Method — design studio</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap">
+<style>
+  :root{
+    --bg-deep:   #010208;   /* near-black base, matches reference panels */
+    --bg-navy:   #050c18;
+    --edge-blue: #102c44;   /* dim outer edge of the glow */
+    --mid-blue:  #236595;   /* steel-blue mid glow */
+    --core-blue: #5f93bd;   /* brighter steel-blue core */
+    --hot-blue:  #cfe4f3;   /* pale highlight, matches the light-beam panel */
+    --lilac:     #cfe4f3;
+    --ink:       #f4f5ff;
+    --ink-dim:   rgba(244,245,255,.62);
+    --ink-faint: rgba(244,245,255,.38);
+    --line:      rgba(244,245,255,.14);
+    --serif: "General Sans", sans-serif;
+    --sans:  "General Sans", sans-serif;
+    --heading-font: "General Sans", sans-serif;
+    --nav-h: 84px;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--bg-deep);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /*  background  */
+  .bg{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    background:var(--bg-deep);
+  }
+  .bg::after{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at 66% 26%, transparent 0%, rgba(1,2,8,.25) 38%, rgba(1,2,8,.62) 64%, rgba(0,0,3,.92) 100%);
+    pointer-events:none;
+  }
+  .blob{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(58px);
+    mix-blend-mode:screen;
+    opacity:1;
+    will-change:transform;
+  }
+  .blob-a{ width:48vw; height:48vw; top:-12vw; right:-2vw;
+    background:radial-gradient(circle at 42% 36%, var(--hot-blue) 0%, var(--hot-blue) 10%, var(--core-blue) 24%, var(--mid-blue) 40%, var(--edge-blue) 56%, transparent 68%);
+    animation:driftA 26s ease-in-out infinite; }
+  .blob-b{ width:34vw; height:34vw; left:-6vw; bottom:-4vw;
+    background:radial-gradient(circle at 55% 40%, var(--core-blue) 0%, var(--mid-blue) 24%, var(--edge-blue) 46%, transparent 62%);
+    opacity:.55;
+    animation:driftB 32s ease-in-out infinite; }
+  @keyframes driftA{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(-3vw,4vw) scale(1.06); }
+  }
+  @keyframes driftB{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(4vw,-3vw) scale(1.08); }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .blob{ animation:none !important; }
+  }
+  .grain{
+    position:absolute; inset:0;
+    opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* shell  */
+  .shell{ position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; }
+
+  nav{
+    position:sticky; top:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 56px;
+    background:rgba(1,2,8,.4);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid transparent;
+    transition:border-color .3s ease, background .3s ease;
+  }
+  nav.scrolled{ border-color:var(--line); background:rgba(1,2,8,.74); }
+
+  .menu-toggle{
+    width:48px; height:48px; border-radius:50%;
+    border:1px solid var(--line); background:rgba(255,255,255,.035);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    cursor:pointer; color:var(--ink);
+    transition:border-color .25s ease, background .25s ease, transform .25s ease;
+  }
+  .menu-toggle:hover{ border-color:var(--core-blue); background:rgba(95,147,189,.12); }
+  .menu-toggle span{ display:block; width:17px; height:1px; background:currentColor; transition:transform .25s ease, opacity .25s ease; }
+  .menu-toggle.is-open span:first-child{ transform:translateY(3.5px) rotate(45deg); }
+  .menu-toggle.is-open span:last-child{ transform:translateY(-3.5px) rotate(-45deg); }
+
+  .menu-backdrop{
+    position:fixed; inset:0; z-index:49;
+    background:rgba(0,0,0,.46);
+    opacity:0; visibility:hidden;
+    transition:opacity .3s ease, visibility .3s ease;
+    backdrop-filter:blur(3px);
+    -webkit-backdrop-filter:blur(3px);
+  }
+  .menu-backdrop.is-open{ opacity:1; visibility:visible; }
+
+  .side-menu{
+    position:fixed; top:0; right:0; bottom:0; z-index:50;
+    width:min(440px, 88vw);
+    padding:28px 34px 34px;
+    background:rgba(4,7,16,.96);
+    border-left:1px solid var(--line);
+    box-shadow:-30px 0 80px rgba(0,0,0,.38);
+    transform:translateX(102%);
+    visibility:hidden;
+    transition:transform .45s cubic-bezier(.16,.8,.3,1), visibility .45s ease;
+    overflow-y:auto;
+  }
+  .side-menu.is-open{ transform:translateX(0); visibility:visible; }
+  .side-menu-head{ display:flex; align-items:center; justify-content:space-between; padding-bottom:28px; border-bottom:1px solid var(--line); }
+  .side-menu-label, .side-menu-kicker{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+  .menu-close{
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(255,255,255,.03); color:var(--ink); font-size:24px; line-height:1;
+    cursor:pointer; transition:border-color .25s ease, background .25s ease;
+  }
+  .menu-close:hover{ border-color:var(--core-blue); background:rgba(95,147,189,.12); }
+  .side-menu-content{ padding-top:34px; }
+  .side-menu-kicker{ margin-bottom:16px; }
+  .side-menu-link{
+    display:grid; grid-template-columns:38px 1fr; align-items:center; gap:14px;
+    padding:17px 0; border-bottom:1px solid rgba(244,245,255,.09);
+    text-decoration:none; color:var(--ink);
+    transition:color .25s ease, padding-left .25s ease;
+  }
+  .side-menu-link span{ font-family:var(--serif); font-style:italic; font-size:13px; color:var(--ink-faint); }
+  .side-menu-link strong{ font-size:18px; font-weight:500; }
+  .side-menu-link:hover{ color:var(--lilac); padding-left:6px; }
+  .side-menu-link.active{ color:var(--lilac); }
+  .side-menu-link.active span{ color:var(--lilac); }
+  .side-menu-simple{ grid-template-columns:1fr auto; }
+  .side-menu-divider{ height:1px; background:var(--line); margin:34px 0; }
+  body.menu-open{ overflow:hidden; }
+  .logo{
+    font-family:var(--serif); font-style:normal; font-weight:700; font-size:19px;
+    letter-spacing:.01em; color:var(--ink);
+    display:flex; align-items:center; gap:9px;
+    text-decoration:none;
+  }
+  .logo .spark{ font-style:normal; font-size:15px; color:var(--core-blue); }
+  .icon-spark{ display:inline-block; width:1em; height:1em; vertical-align:-0.12em; color:inherit; }
+
+  main{ flex:1; display:flex; flex-direction:column; perspective:1600px; }
+
+  section.view{
+    scroll-margin-top:var(--nav-h);
+    padding:90px 56px;
+    border-bottom:1px solid rgba(244,245,255,.06);
+  }
+  section.view:last-of-type{ border-bottom:none; }
+
+  .eyebrow{
+    font-size:12.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-dim); font-weight:600; margin-bottom:18px;
+  }
+
+  /* HOME */
+  #home{
+    min-height:calc(100vh - var(--nav-h));
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    text-align:center;
+  }
+  .home-inner{ max-width:1180px; margin:0 auto; }
+  h1.hero{
+    font-family:var(--heading-font); font-weight:600;
+    font-size:clamp(34px, 5.4vw, 68px);
+    line-height:1.14; letter-spacing:-.01em;
+    color:var(--ink);
+  }
+  h1.hero em{
+    font-family:var(--serif); font-style:italic; font-weight:400;
+    color:var(--lilac);
+  }
+  .spark-mark{ font-size:.55em; vertical-align:top; color:var(--lilac); }
+
+  .home-foot{
+    display:flex; justify-content:center; align-items:center;
+    gap:56px; margin-top:56px; flex-wrap:wrap;
+  }
+  .note{
+    max-width:360px; text-align:left;
+  }
+  .note p{ font-size:13px; line-height:1.65; color:var(--ink-dim); letter-spacing:.01em; }
+
+  .stats{ display:flex; gap:48px; }
+  .stat{ display:flex; flex-direction:column; gap:4px; align-items:flex-start; }
+  .stat .num{ font-family:var(--serif); font-style:italic; font-weight:500; font-size:34px; color:var(--ink); }
+  .stat .lbl{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+
+  .scroll-cue{
+    margin-top:64px; display:flex; align-items:center; justify-content:center; gap:10px;
+    color:var(--ink-faint); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  }
+  .scroll-cue .dot{
+    width:20px; height:20px; border-radius:50%; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:11px;
+    animation:bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(5px); } }
+  @media (prefers-reduced-motion:reduce){ .scroll-cue .dot{ animation:none; } }
+
+  /* ABOUT  */
+  .about-grid{
+    max-width:1180px; display:grid; grid-template-columns:1.3fr .9fr; gap:70px; align-items:start;
+  }
+  h1.title{
+    font-family:var(--sans); font-weight:600;
+    font-size:clamp(30px,4vw,50px); line-height:1.2; letter-spacing:-.01em;
+  }
+  h1.title em{ font-family:var(--serif); font-style:italic; font-weight:400; color:var(--lilac); }
+  .lead{ margin-top:22px; font-size:15.5px; line-height:1.75; color:var(--ink-dim); max-width:52ch; }
+
+  .about-stats{ display:flex; gap:44px; margin-top:44px; }
+
+  .process{ margin-top:52px; display:flex; flex-direction:column; gap:0; }
+  .process-row{
+    display:grid; grid-template-columns:38px 1fr; gap:18px;
+    padding:20px 0; border-top:1px solid var(--line);
+  }
+  .process:last-child .process-row:last-child{ border-bottom:1px solid var(--line); }
+  .process-row .idx{ font-family:var(--serif); font-style:italic; color:var(--lilac); font-size:15px; }
+  .process-row h3{ font-size:15px; font-weight:600; margin-bottom:6px; }
+  .process-row p{ font-size:13px; color:var(--ink-dim); line-height:1.6; max-width:46ch; }
+
+  .about-aside{
+    border:1px solid var(--line); border-radius:18px; padding:30px;
+    backdrop-filter:blur(6px); background:rgba(255,255,255,.02);
+  }
+  .about-aside .kicker{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:14px; }
+  .about-aside p{ font-size:14px; line-height:1.7; color:var(--ink-dim); margin-bottom:20px; }
+  .about-aside p:last-child{ margin-bottom:0; }
+  .about-aside strong{ color:var(--ink); font-weight:600; }
+
+  /*  WORK: category cards  */
+  .cat-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:18px;
+    margin-bottom:56px;
+  }
+  .cat-card{
+    position:relative; overflow:hidden;
+    aspect-ratio:3/4.3; border-radius:26px;
+    border:1px solid var(--line); background:#050b23;
+    padding:22px; display:flex; flex-direction:column; justify-content:space-between;
+    cursor:pointer; text-align:left; font-family:inherit;
+    transition:transform .35s cubic-bezier(.16,.8,.3,1), border-color .35s ease, box-shadow .35s ease;
+  }
+  .cat-card:hover{ transform:translateY(-6px); border-color:rgba(185,193,255,.4); }
+  .cat-card.active{
+    border-color:var(--lilac);
+    box-shadow:0 20px 50px -20px rgba(43,61,255,.55);
+  }
+  .cat-glow{
+    position:absolute; inset:-30%; z-index:0;
+    filter:blur(46px); opacity:.85; mix-blend-mode:screen;
+    transition:opacity .35s ease;
+  }
+  .cat-card:not(.active) .cat-glow{ opacity:.45; }
+  .cat-glow-1{ background:radial-gradient(circle at 30% 20%, var(--hot-blue), var(--mid-blue) 40%, transparent 72%); }
+  .cat-glow-2{ background:radial-gradient(circle at 70% 25%, var(--core-blue), var(--edge-blue) 45%, transparent 74%); }
+  .cat-glow-3{ background:radial-gradient(circle at 25% 65%, var(--hot-blue), var(--edge-blue) 42%, transparent 72%); }
+  .cat-glow-4{ background:radial-gradient(circle at 75% 70%, var(--core-blue), var(--mid-blue) 44%, transparent 74%); }
+  .cat-top{ position:relative; z-index:1; display:flex; justify-content:flex-end; }
+  .cat-spark{ font-size:15px; color:var(--lilac); opacity:.8; }
+  .cat-bottom{ position:relative; z-index:1; display:flex; flex-direction:column; gap:10px; }
+  .cat-title{ font-family:var(--serif); font-style:italic; font-weight:500; font-size:19px; line-height:1.2; color:var(--ink); }
+  .cat-tag{ font-size:12.5px; line-height:1.55; color:var(--ink-dim); }
+  .cat-tag em{ font-style:italic; color:var(--ink); }
+
+  .work-panel-inner{ display:none; }
+  .work-panel-inner.active{ display:block; }
+
+  .empty-state{
+    border:1px dashed var(--line); border-radius:20px;
+    padding:56px 32px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .empty-spark{ font-size:22px; color:var(--lilac); margin-bottom:6px; }
+  .empty-state p{ font-size:15px; color:var(--ink); font-weight:600; }
+  .empty-sub{ font-size:13px; color:var(--ink-faint); }
+
+  /* CONTACT  */
+  .contact-grid{
+    max-width:1180px; display:grid; grid-template-columns:1.3fr .9fr; gap:70px; align-items:start;
+  }
+  .contact-links{ margin-top:36px; display:flex; flex-direction:column; gap:0; }
+  .contact-link{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:18px 0; border-top:1px solid var(--line); text-decoration:none; color:var(--ink);
+    transition:opacity .25s ease;
+  }
+  .contact-links .contact-link:last-child{ border-bottom:1px solid var(--line); }
+  .contact-link:hover{ opacity:.7; }
+  .contact-link .lbl{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+  .contact-link .val{ font-family:var(--serif); font-style:italic; font-size:19px; }
+
+  .contact-form{ margin-top:40px; display:flex; flex-direction:column; gap:16px; max-width:460px; }
+  .field{ display:flex; flex-direction:column; gap:8px; }
+  .field label{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+  .field input, .field textarea{
+    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:var(--ink); font-family:var(--sans); font-size:14px;
+    outline:none; transition:border-color .25s ease, background .25s ease;
+    resize:vertical;
+  }
+  .field input:focus, .field textarea:focus{ border-color:var(--lilac); background:rgba(255,255,255,.05); }
+  .field input::placeholder, .field textarea::placeholder{ color:var(--ink-faint); }
+  .form-submit{
+    align-self:flex-start; cursor:pointer; font-family:inherit;
+    background:none;
+  }
+  .form-submit:disabled{ opacity:.5; cursor:not-allowed; }
+  .form-status{ font-size:13px; min-height:18px; }
+  .form-status.ok{ color:var(--ink); }
+  .form-status.err{ color:#ff9d9d; }
+
+  /* WORK  */
+  .work-head{ max-width:820px; margin-bottom:52px; }
+  h1.title2{
+    font-family:var(--sans); font-weight:600;
+    font-size:clamp(28px,3.8vw,46px); line-height:1.22; letter-spacing:-.01em;
+  }
+  h1.title2 em{ font-family:var(--serif); font-style:italic; font-weight:400; color:var(--lilac); }
+
+  .work-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:26px; overflow:hidden;
+  }
+  .work-card{
+    background:var(--bg-navy); padding:38px; text-decoration:none; color:var(--ink);
+    display:flex; flex-direction:column; gap:16px; min-height:220px; justify-content:space-between;
+    transition:background .3s ease;
+    position:relative;
+  }
+  .work-card:hover{ background:rgba(43,61,255,.14); }
+  .work-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .work-num{ font-family:var(--serif); font-style:italic; color:var(--ink-faint); font-size:14px; }
+  .work-name{ font-family:var(--serif); font-style:italic; font-weight:500; font-size:26px; }
+  .work-meta{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; }
+  .work-desc{ font-size:13px; line-height:1.6; color:var(--ink-dim); max-width:38ch; }
+  .work-tag{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); white-space:nowrap; }
+
+  .work-cta{ margin-top:48px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+  .work-cta p{ font-size:13px; color:var(--ink-dim); }
+
+  /* shared buttons  */
+  .btn{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:13px 24px; border-radius:999px; border:1px solid var(--line);
+    color:var(--ink); text-decoration:none; font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:600;
+    transition:border-color .25s ease, background .25s ease;
+  }
+  .btn:hover{ border-color:var(--lilac); background:rgba(185,193,255,.08); }
+
+  /*  floating contact badge removed  */
+
+  footer.pagefoot{
+    padding:24px 56px 34px; display:flex; justify-content:space-between; color:var(--ink-faint);
+    font-size:11.5px; letter-spacing:.06em; position:relative; z-index:1;
+  }
+
+  /* scroll reveal (3D pull-up on scroll, site-wide)  */
+  .reveal{
+    opacity:0;
+    transform:translateY(64px) rotateX(22deg) scale(.96);
+    transform-origin:bottom center;
+    transition:opacity .9s cubic-bezier(.16,.8,.3,1), transform .9s cubic-bezier(.16,.8,.3,1);
+    will-change:transform, opacity;
+  }
+  .reveal.reveal-in{
+    opacity:1;
+    transform:translateY(0) rotateX(0deg) scale(1);
+  }
+  .work-grid .reveal:nth-child(1){ transition-delay:.02s; }
+  .work-grid .reveal:nth-child(2){ transition-delay:.12s; }
+  .work-grid .reveal:nth-child(3){ transition-delay:.22s; }
+  .work-grid .reveal:nth-child(4){ transition-delay:.32s; }
+  .cat-card:nth-child(1){ transition-delay:.02s; }
+  .cat-card:nth-child(2){ transition-delay:.1s; }
+  .cat-card:nth-child(3){ transition-delay:.18s; }
+  .cat-card:nth-child(4){ transition-delay:.26s; }
+  .process .reveal:nth-child(1){ transition-delay:.05s; }
+  .process .reveal:nth-child(2){ transition-delay:.15s; }
+  .process .reveal:nth-child(3){ transition-delay:.25s; }
+  .about-grid > .reveal:nth-child(2){ transition-delay:.15s; }
+  .contact-grid > .reveal:nth-child(2){ transition-delay:.15s; }
+  @media (prefers-reduced-motion:reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
+
+  @media (max-width:920px){
+    nav{ padding:20px 22px; }
+    section.view{ padding:64px 22px; }
+    .home-foot{ flex-direction:column; align-items:center; gap:28px; }
+    .about-grid, .contact-grid{ grid-template-columns:1fr; gap:40px; }
+    .work-grid{ grid-template-columns:1fr; }
+    .cat-grid{ grid-template-columns:1fr 1fr; }
+    footer.pagefoot{ padding:20px 22px 26px; flex-direction:column; gap:6px; }
+  }
+  @media (max-width:560px){
+    .cat-grid{ grid-template-columns:1fr; }
+    .cat-card{ aspect-ratio:auto; min-height:180px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="blob blob-a"></div>
+  <div class="blob blob-b"></div>
+  <div class="grain"></div>
+</div>
+
+<div class="shell">
+  <nav id="siteNav">
+    <a href="#home" class="logo"><span class="spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span> Bleu Method</a>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sideMenu">
+      <span></span><span></span>
+    </button>
+  </nav>
+
+  <div class="menu-backdrop" id="menuBackdrop"></div>
+  <aside class="side-menu" id="sideMenu" aria-hidden="true">
+    <div class="side-menu-head">
+      <span class="side-menu-label">Menu</span>
+      <button class="menu-close" id="menuClose" type="button" aria-label="Close menu">×</button>
+    </div>
+    <div class="side-menu-content">
+      <div class="side-menu-kicker">Services</div>
+      <a class="side-menu-link" href="#work" data-cat="web"><span>01</span><strong>Web Development</strong></a>
+      <a class="side-menu-link" href="#work" data-cat="content"><span>02</span><strong>Content Production</strong></a>
+      <a class="side-menu-link" href="#work" data-cat="performance"><span>03</span><strong>Performance Marketing</strong></a>
+      <a class="side-menu-link" href="#work" data-cat="social"><span>04</span><strong>Social Media</strong></a>
+
+      <div class="side-menu-divider"></div>
+      <div class="side-menu-kicker">Navigate</div>
+      <a class="side-menu-link side-menu-simple" href="#about"><strong>About</strong></a>
+      <a class="side-menu-link side-menu-simple" href="#contact"><strong>Start a project</strong></a>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- HOME  -->
+    <section id="home" class="view">
+      <div class="home-inner">
+        <div class="reveal">
+          <h1 class="hero">
+            Design that <em>ships</em> <span class="spark-mark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span><br>
+            <em>redesign</em> and UX improvement<br>
+            one-stop shop <em>design support</em>
+          </h1>
+        </div>
+
+        <div class="home-foot reveal">
+          <div class="note">
+            <p>We offer supervision and cooperation with your developers at every stage to ensure the design looks as great as intended. <strong style="color:var(--ink)">Bleu Method</strong> — a design studio with 4+ years in the field.</p>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="num">4+</span><span class="lbl">Years experience</span></div>
+            <div class="stat"><span class="num">40+</span><span class="lbl">Projects shipped</span></div>
+            <div class="stat"><span class="num">4</span><span class="lbl">Featured cases</span></div>
+          </div>
+        </div>
+
+        <div class="scroll-cue"><span class="dot">↓</span> Scroll to see more</div>
+      </div>
+    </section>
+
+    <!-- ABOUT  -->
+    <section id="about" class="view">
+      <div class="about-grid">
+        <div class="reveal">
+          <div class="eyebrow">Who we are</div>
+          <h1 class="title">4+ years designing products that <em>ship</em> — and hold up after launch.</h1>
+          <p class="lead">Bleu Method is a design studio working across brand, product and web. Since 2022 we've partnered with hospitality, real estate and lifestyle brands to take ideas from a blank page to a finished, working interface — and to rework what's already live so it performs better.</p>
+
+          <div class="about-stats">
+            <div class="stat"><span class="num">4+</span><span class="lbl">Years in practice</span></div>
+            <div class="stat"><span class="num">40+</span><span class="lbl">Projects delivered</span></div>
+            <div class="stat"><span class="num">1:1</span><span class="lbl">Dev collaboration</span></div>
+          </div>
+
+          <div class="process">
+            <div class="process-row reveal">
+              <div class="idx">01</div>
+              <div><h3>Discover</h3><p>We start with the brief, the audience and the constraints — understanding the problem before touching a single pixel.</p></div>
+            </div>
+            <div class="process-row reveal">
+              <div class="idx">02</div>
+              <div><h3>Design</h3><p>Whether it's a brand new product or a full redesign, we build the system: layout, type, motion and every state in between.</p></div>
+            </div>
+            <div class="process-row reveal">
+              <div class="idx">03</div>
+              <div><h3>Deliver</h3><p>We stay through implementation, working directly with your developers so the shipped product matches the design intent.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="about-aside reveal">
+          <div class="kicker">Why teams work with us</div>
+          <p><strong>Small, senior team.</strong> Every project is led by someone who's been doing this for 4+ years — no hand-offs to juniors mid-project.</p>
+          <p><strong>End-to-end support.</strong> We don't disappear after the handoff. We supervise implementation so the final build looks like the design.</p>
+          <p><strong>40+ projects, real range.</strong> Hospitality, real estate and lifestyle brands across India — see a few of them below.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- WORK  -->
+    <section id="work" class="view">
+      <div class="work-head reveal">
+        <div class="eyebrow">What we do</div>
+        <h1 class="title2">Four ways we <em>plug in</em> — pick one to see the work.</h1>
+        <p class="lead" style="margin-top:18px;">40+ projects across all four. Tap a category to see it in action — we're adding case studies as we go.</p>
+      </div>
+
+      <div class="cat-grid">
+        <button class="cat-card reveal active" data-cat="web" aria-pressed="true">
+          <span class="cat-glow cat-glow-1" aria-hidden="true"></span>
+          <span class="cat-top"><span class="cat-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span></span>
+          <span class="cat-bottom">
+            <span class="cat-title">Web Development</span>
+            <span class="cat-tag">Sites built to <em>convert</em>, not just to look good.</span>
+                      </span>
+        </button>
+
+        <button class="cat-card reveal" data-cat="content" aria-pressed="false">
+          <span class="cat-glow cat-glow-2" aria-hidden="true"></span>
+          <span class="cat-top"><span class="cat-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span></span>
+          <span class="cat-bottom">
+            <span class="cat-title">Content Production</span>
+            <span class="cat-tag">Content shaped by <em>strategy</em>, not guesswork.</span>
+                      </span>
+        </button>
+
+        <button class="cat-card reveal" data-cat="performance" aria-pressed="false">
+          <span class="cat-glow cat-glow-3" aria-hidden="true"></span>
+          <span class="cat-top"><span class="cat-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span></span>
+          <span class="cat-bottom">
+            <span class="cat-title">Performance Marketing</span>
+            <span class="cat-tag">Ad spend that earns its <em>keep</em>.</span>
+                      </span>
+        </button>
+
+        <button class="cat-card reveal" data-cat="social" aria-pressed="false">
+          <span class="cat-glow cat-glow-4" aria-hidden="true"></span>
+          <span class="cat-top"><span class="cat-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span></span>
+          <span class="cat-bottom">
+            <span class="cat-title">Social Media Management</span>
+            <span class="cat-tag">Feeds people <em>actually</em> stop scrolling for.</span>
+                      </span>
+        </button>
+      </div>
+
+      <div class="work-panel" id="workPanel">
+
+        <div class="work-panel-inner active" data-panel="web">
+          <div class="work-grid">
+            <a class="work-card reveal" href="https://beaconhotels.com/" target="_blank" rel="noopener">
+              <div class="work-top">
+                <span class="work-num">01</span>
+              </div>
+              <div>
+                <div class="work-name">Beacon Hotels</div>
+                <div class="work-meta">
+                  <p class="work-desc">Booking-led site for a pan-India budget hotel chain, spanning dozens of properties under one clear, easy-to-navigate system.</p>
+                  <span class="work-tag">Hospitality</span>
+                </div>
+              </div>
+            </a>
+
+            <a class="work-card reveal" href="https://wayanadsilverwoods.com/" target="_blank" rel="noopener">
+              <div class="work-top">
+                <span class="work-num">02</span>
+              </div>
+              <div>
+                <div class="work-name">Wayanad Silverwoods</div>
+                <div class="work-meta">
+                  <p class="work-desc">A lush, imagery-led resort site built around Kerala's Banasura Sagar backwaters — rooms, dining and events in one immersive flow.</p>
+                  <span class="work-tag">Resort</span>
+                </div>
+              </div>
+            </a>
+
+            <a class="work-card reveal" href="https://www.copperedge.in/" target="_blank" rel="noopener">
+              <div class="work-top">
+                <span class="work-num">03</span>
+              </div>
+              <div>
+                <div class="work-name">Copper Edge</div>
+                <div class="work-meta">
+                  <p class="work-desc">Eco-resort site for a Coorg coffee-estate retreat — cottages, villas and dining presented with a calm, nature-first pace.</p>
+                  <span class="work-tag">Eco Resort</span>
+                </div>
+              </div>
+            </a>
+
+            <a class="work-card reveal" href="https://oceanparadisegoa.com/" target="_blank" rel="noopener">
+              <div class="work-top">
+                <span class="work-num">04</span>
+              </div>
+              <div>
+                <div class="work-name">Ocean Paradise Goa</div>
+                <div class="work-meta">
+                  <p class="work-desc">A beachside Goa property site designed to sell the stay at a glance — rooms, amenities and booking kept effortless.</p>
+                  <span class="work-tag">Beach Resort</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div class="work-panel-inner" data-panel="content">
+          <div class="empty-state reveal">
+            <span class="empty-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span>
+            <p>Content Production case studies are on their way.</p>
+            <span class="empty-sub">Check back soon, or ask us directly.</span>
+          </div>
+        </div>
+
+        <div class="work-panel-inner" data-panel="performance">
+          <div class="empty-state reveal">
+            <span class="empty-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span>
+            <p>Performance Marketing case studies are on their way.</p>
+            <span class="empty-sub">Check back soon, or ask us directly.</span>
+          </div>
+        </div>
+
+        <div class="work-panel-inner" data-panel="social">
+          <div class="empty-state reveal">
+            <span class="empty-spark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span>
+            <p>Social Media Management case studies are on their way.</p>
+            <span class="empty-sub">Check back soon, or ask us directly.</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="work-cta">
+        <a class="btn" href="#contact">Start a project →</a>
+        <p>40+ projects total — these are a starting point.</p>
+      </div>
+    </section>
+
+    <!-- CONTACT  -->
+    <section id="contact" class="view">
+      <div class="contact-grid">
+        <div class="reveal">
+          <div class="eyebrow">Get in touch</div>
+          <h1 class="title">Tell us what you're building. <em>We'll take it from there.</em></h1>
+          <p class="lead">New product, a redesign, or ongoing design support — write in with a line about the project and we'll come back with next steps.</p>
+
+          <div class="contact-links">
+            <a class="contact-link" href="mailto:junaid@bleumethod.com">
+              <span class="lbl">Email</span>
+              <span class="val">junaid@bleumethod.com</span>
+            </a>
+            <a class="contact-link" href="https://bleumethod.com" target="_blank" rel="noopener">
+              <span class="lbl">Site</span>
+              <span class="val">bleumethod.com</span>
+            </a>
+          </div>
+
+          <div class="about-stats" style="margin-top:48px;">
+            <div class="stat"><span class="num">4+</span><span class="lbl">Years experience</span></div>
+            <div class="stat"><span class="num">40+</span><span class="lbl">Projects shipped</span></div>
+          </div>
+
+          <form class="contact-form" id="contactForm">
+            <div class="field">
+              <label for="cf-name">Name</label>
+              <input id="cf-name" name="name" type="text" placeholder="Your name" required>
+            </div>
+            <div class="field">
+              <label for="cf-email">Email</label>
+              <input id="cf-email" name="email" type="email" placeholder="you@company.com" required>
+            </div>
+            <div class="field">
+              <label for="cf-message">Message</label>
+              <textarea id="cf-message" name="message" rows="4" placeholder="What are you building?" required></textarea>
+            </div>
+            <button class="btn form-submit" type="submit" id="cf-submit">Send message →</button>
+            <div class="form-status" id="cf-status"></div>
+          </form>
+        </div>
+
+        <aside class="about-aside reveal">
+          <div class="kicker">Before you write in</div>
+          <p><strong>Tell us the stage.</strong> New idea, live product, or somewhere in between — it changes how we start.</p>
+          <p><strong>Share what you have.</strong> A brief, a live link, or even a rough deck all help us respond with something useful.</p>
+          <p><strong>Expect a real reply.</strong> No forms that vanish into a queue — a person on the team reads and answers every note.</p>
+          <a class="btn" href="mailto:junaid@bleumethod.com" style="margin-top:6px;">Email junaid@bleumethod.com</a>
+        </aside>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="pagefoot">
+    <span>© Bleu Method — design studio</span>
+    <span>4+ years · 40+ projects</span>
+  </footer>
+</div>
+
+
+
+<script>
+  /*  sticky nav shadow on scroll */
+  var siteNav = document.getElementById('siteNav');
+  function onScrollNav(){
+    if (window.scrollY > 12) siteNav.classList.add('scrolled');
+    else siteNav.classList.remove('scrolled');
+  }
+  window.addEventListener('scroll', onScrollNav, { passive:true });
+  onScrollNav();
+
+  /* scroll-triggered 3D reveal, site-wide  */
+  var revealObserver = ('IntersectionObserver' in window)
+    ? new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if (entry.isIntersecting){
+            entry.target.classList.add('reveal-in');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold:0.18, rootMargin:'0px 0px -70px 0px' })
+    : null;
+
+  var revealEls = document.querySelectorAll('.reveal');
+  revealEls.forEach(function(el){
+    if (revealObserver) revealObserver.observe(el);
+    else el.classList.add('reveal-in');
+  });
+
+  /*  in-page links: scroll manually instead of relying on native '#' navigation
+       (the sandboxed preview panel can mishandle native anchor-fragment jumps) */
+  document.querySelectorAll('a[href^="#"]').forEach(function(link){
+    link.addEventListener('click', function(e){
+      var id = link.getAttribute('href').slice(1);
+      var target = document.getElementById(id);
+      if (target){
+        e.preventDefault();
+        target.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    });
+  });
+
+  /* category selection: shared by nav links + work cards  */
+  var catCards = document.querySelectorAll('.cat-card');
+  var workPanels = document.querySelectorAll('.work-panel-inner');
+  var catNavLinks = document.querySelectorAll('.side-menu-link[data-cat]');
+
+  function selectCategory(cat){
+    catCards.forEach(function(c){
+      var isMatch = c.dataset.cat === cat;
+      c.classList.toggle('active', isMatch);
+      c.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+    });
+    catNavLinks.forEach(function(a){
+      a.classList.toggle('active', a.dataset.cat === cat);
+    });
+    workPanels.forEach(function(p){
+      p.classList.toggle('active', p.dataset.panel === cat);
+    });
+
+    // re-trigger the 3D reveal for whatever just became visible
+    var activePanel = document.querySelector('.work-panel-inner[data-panel="' + cat + '"]');
+    if (activePanel){
+      var els = activePanel.querySelectorAll('.reveal');
+      els.forEach(function(el){
+        el.classList.remove('reveal-in');
+        void el.offsetWidth; // restart the transition
+        if (revealObserver) revealObserver.observe(el);
+        else el.classList.add('reveal-in');
+      });
+    }
+  }
+
+  catCards.forEach(function(card){
+    card.addEventListener('click', function(){ selectCategory(card.dataset.cat); });
+  });
+  catNavLinks.forEach(function(link){
+    link.addEventListener('click', function(){ selectCategory(link.dataset.cat); });
+  });
+
+  /* slide-out menu  */
+  var menuToggle = document.getElementById('menuToggle');
+  var menuClose = document.getElementById('menuClose');
+  var sideMenu = document.getElementById('sideMenu');
+  var menuBackdrop = document.getElementById('menuBackdrop');
+
+  function setMenu(open){
+    menuToggle.classList.toggle('is-open', open);
+    sideMenu.classList.toggle('is-open', open);
+    menuBackdrop.classList.toggle('is-open', open);
+    document.body.classList.toggle('menu-open', open);
+    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    sideMenu.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  menuToggle.addEventListener('click', function(){
+    setMenu(!sideMenu.classList.contains('is-open'));
+  });
+  menuClose.addEventListener('click', function(){ setMenu(false); });
+  menuBackdrop.addEventListener('click', function(){ setMenu(false); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') setMenu(false);
+  });
+
+  document.querySelectorAll('.side-menu-link[href^="#"]').forEach(function(link){
+    link.addEventListener('click', function(){
+      setMenu(false);
+      if (link.dataset.cat) selectCategory(link.dataset.cat);
+    });
+  });
+
+  /* contact form -> Python backend  */
+  var contactForm = document.getElementById('contactForm');
+  if (contactForm){
+    contactForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var btn = document.getElementById('cf-submit');
+      var status = document.getElementById('cf-status');
+      var payload = {
+        name: document.getElementById('cf-name').value.trim(),
+        email: document.getElementById('cf-email').value.trim(),
+        message: document.getElementById('cf-message').value.trim()
+      };
+      status.textContent = '';
+      status.className = 'form-status';
+      btn.disabled = true;
+      var originalText = btn.textContent;
+      btn.textContent = 'Sending…';
+
+      fetch('/api/contact', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function(r){ return r.json().then(function(data){ return {ok:r.ok, data:data}; }); })
+      .then(function(res){
+        if (res.ok && res.data.ok){
+          status.textContent = "Thanks —We'll get back to you soon.";
+          status.className = 'form-status ok';
+          contactForm.reset();
+        } else {
+          status.textContent = (res.data && res.data.error) || 'Something went wrong. Try again.';
+          status.className = 'form-status err';
+        }
+      })
+      .catch(function(){
+        status.textContent = "Couldn't reach the server. Check your connection and try again.";
+        status.className = 'form-status err';
+      })
+      .finally(function(){
+        btn.disabled = false;
+        btn.textContent = originalText;
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
