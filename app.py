@@ -1,11 +1,10 @@
 import os
 import re
-import smtplib
 import sqlite3
 from datetime import datetime, timezone
-from email.message import EmailMessage
 from pathlib import Path
 
+import requests
 from flask import Flask, render_template, request, jsonify
 
 try:
@@ -18,12 +17,17 @@ base_dir = Path(__file__).resolve().parent
 db_path = base_dir / "contacts.db"
 email_re = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-# --- outgoing email settings (all read from environment variables) ---
-SMTP_HOST = os.environ.get("SMTP_HOST")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER")
-SMTP_PASS = os.environ.get("SMTP_PASS")
+# --- outgoing email settings (Brevo's HTTP API — not SMTP) ---
+# Render's free tier blocks outbound SMTP ports (25/465/587) entirely, so
+# sending over plain HTTPS via Brevo's REST API sidesteps that restriction.
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = os.environ.get("BREVO_SENDER_EMAIL")
+BREVO_SENDER_NAME = os.environ.get("BREVO_SENDER_NAME", "Bleu Method")
 CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "junaid@bleumethod.com")
+# Supports multiple recipients: set CONTACT_TO_EMAIL to a comma-separated
+# list, e.g. "junaid@bleumethod.com,arsalanwagle9@gmail.com" — every
+# submission gets emailed to all of them.
+CONTACT_TO_EMAILS = [addr.strip() for addr in CONTACT_TO_EMAIL.split(",") if addr.strip()]
 
 app = Flask(__name__)
 
@@ -49,27 +53,34 @@ init_db()
 
 def send_notification_email(name, email, message):
     """
-    Emails the submission to CONTACT_TO_EMAIL using the SMTP credentials
-    set as environment variables. Returns True/False so a failure here
-    never breaks the form — the submission is already saved in the
-    database either way.
+    Emails the submission to everyone in CONTACT_TO_EMAILS using Brevo's
+    HTTP API (not SMTP — Render's free tier blocks outbound SMTP ports
+    entirely, but this runs over plain HTTPS so it isn't affected).
+    Returns True/False so a failure here never breaks the form — the
+    submission is already saved in the database either way.
     """
-    if not (SMTP_HOST and SMTP_USER and SMTP_PASS):
-        app.logger.warning("SMTP not configured — skipping email notification.")
+    if not (BREVO_API_KEY and BREVO_SENDER_EMAIL):
+        app.logger.warning("Brevo not configured — skipping email notification.")
         return False
 
     try:
-        msg = EmailMessage()
-        msg["Subject"] = f"New message from {name} — bleumethod.com"
-        msg["From"] = SMTP_USER
-        msg["To"] = CONTACT_TO_EMAIL
-        msg["Reply-To"] = email
-        msg.set_content(f"From: {name} <{email}>\n\n{message}")
-
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.send_message(msg)
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": BREVO_API_KEY,
+                "accept": "application/json",
+                "content-type": "application/json",
+            },
+            json={
+                "sender": {"email": BREVO_SENDER_EMAIL, "name": BREVO_SENDER_NAME},
+                "to": [{"email": addr} for addr in CONTACT_TO_EMAILS],
+                "replyTo": {"email": email, "name": name},
+                "subject": f"New message from {name} — bleumethod.com",
+                "textContent": f"From: {name} <{email}>\n\n{message}",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
         return True
     except Exception as e:
         app.logger.error(f"Failed to send notification email: {e}")
