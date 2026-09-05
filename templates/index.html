@@ -164,6 +164,11 @@
     text-decoration:none;
   }
   .logo .spark{ font-style:normal; font-size:15px; color:var(--core-blue); }
+  /* Shared spark icon — a real inline SVG instead of a Unicode character,
+     so it renders identically everywhere instead of falling back to each
+     OS's own color-emoji font (which is what caused the green squircle on
+     Mac and would've looked different again on Windows/Android). Sizes
+     with font-size and colors with `color`, same as the text it replaces. */
   .icon-spark{ display:inline-block; width:1em; height:1em; vertical-align:-0.12em; color:inherit; }
 
   main{ flex:1; display:flex; flex-direction:column; perspective:1600px; }
@@ -190,7 +195,7 @@
   h1.hero{
     font-family:var(--heading-font); font-weight:600;
     font-size:clamp(28px, 3.8vw, 52px);
-    line-height:1.14; letter-spacing:-.01em;
+    line-height:1.08; letter-spacing:-.01em;
     color:var(--ink);
   }
   h1.hero em{
@@ -481,7 +486,7 @@
       <a class="side-menu-link" href="#work" data-cat="web"><span>01</span><strong>Web Development</strong></a>
       <a class="side-menu-link" href="#work" data-cat="content"><span>02</span><strong>Content Production</strong></a>
       <a class="side-menu-link" href="#work" data-cat="performance"><span>03</span><strong>Performance Marketing</strong></a>
-      <a class="side-menu-link" href="#work" data-cat="social"><span>04</span><strong>Social Media</strong></a>
+      <a class="side-menu-link" href="#work" data-cat="social"><span>04</span><strong>Social Media Management</strong></a>
 
       <div class="side-menu-divider"></div>
       <div class="side-menu-kicker">Navigate</div>
@@ -496,10 +501,10 @@
     <section id="home" class="view">
       <div class="home-inner">
         <div class="reveal">
+          <div class="eyebrow">We will gladly help you with</div>
           <h1 class="hero">
             We construct your site, <em>produce</em> your <em>content</em>,<br>
-            through social and <em>performance</em> campaigns<br>
-            — all under one roof.
+            through social and <em>performance</em> campaigns — all under one roof.
           </h1>
         </div>
 
