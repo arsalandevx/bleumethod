@@ -427,6 +427,32 @@
     footer.pagefoot{ padding:20px 22px 26px; flex-direction:column; gap:6px; }
   }
   @media (max-width:560px){
+    /* Keep the atmospheric blue background visible on small screens. */
+    .blob-a{
+      width:110vw;
+      height:110vw;
+      top:-22vw;
+      right:-28vw;
+      filter:blur(42px);
+    }
+    .blob-b{
+      width:80vw;
+      height:80vw;
+      left:-28vw;
+      bottom:-10vw;
+      filter:blur(42px);
+      opacity:.65;
+    }
+    .bg::after{
+      background:radial-gradient(
+        ellipse at 62% 30%,
+        transparent 0%,
+        rgba(1,2,8,.16) 38%,
+        rgba(1,2,8,.42) 64%,
+        rgba(0,0,3,.72) 100%
+      );
+    }
+
     .cat-grid{ grid-template-columns:1fr; }
     .cat-card{ aspect-ratio:auto; min-height:180px; }
   }
@@ -474,9 +500,11 @@
     <section id="home" class="view">
       <div class="home-inner">
         <div class="reveal">
+          <div class="eyebrow">We will gladly help you with</div>
           <h1 class="hero">
-            Your brand is too good<br>
-            <em>for average content.</em>
+            Design that <em>ships</em> <span class="spark-mark"><svg class="icon-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.5" y1="4.5" x2="19.5" y2="19.5"/><line x1="19.5" y1="4.5" x2="4.5" y2="19.5"/></g></svg></span><br>
+            <em>redesign</em> and UX improvement<br>
+            one-stop shop <em>design support</em>
           </h1>
         </div>
 
