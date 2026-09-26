@@ -14,7 +14,7 @@ except ImportError:
     pass  # python-dotenv not installed — fine if you're setting env vars another way
 
 base_dir = Path(__file__).resolve().parent
-db_path = base_dir / "contacts.db"
+db_path = Path(os.environ.get("DB_PATH", base_dir / "contacts.db"))
 email_re = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 # --- outgoing email settings (Brevo's HTTP API — not SMTP) ---
